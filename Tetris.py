@@ -1,11 +1,15 @@
 import pygame
+import os
 import random
+main_dir = os.path.split(os.path.abspath(__file__))[0]
+
 
 
 class Game:
     def __init__(self, ):
         self.state = "start"
         self.score = 0
+        self.combo = -1 #initialize combo meter -Hai Hoang
         self.rotation = 0
         self.ShiftX = 0
         self.ShiftY = 0
@@ -28,6 +32,18 @@ class Game:
         self.rotation = 0
         self.typet = random.randint(0, len(self.Figures) - 1)
         self.color = random.randint(1, len(Color.colors) - 1)
+
+    def load_sound(file):
+        """ because pygame can be be compiled without mixer."""
+        if not pygame.mixer:
+            return None
+        file = os.path.join(main_dir, "data", file)
+        try:
+            sound = pygame.mixer.Sound(file)
+            return sound
+        except pygame.error:
+            print("Warning, unable to load, %s" % file)
+        return None
 
     def draw_figure(self, screen, x=100, y=60, colors=()):
         for i in range(4):
@@ -82,6 +98,17 @@ class Game:
                         intersection = True
         return intersection
 
+
+    def default_score_computation(self, lines):
+        return lines ** 2
+    def combo_score_computation(self, lines):
+        if(lines==0):
+            self.combo = -1;#combo has broken, reset combo meter
+        else:
+            self.combo+= lines
+            return lines**(3+self.combo)
+
+    #def combo_calculation(self)
     def break_lines(self, board):
         lines = 0
         for i in range(1, board.height):
@@ -95,8 +122,9 @@ class Game:
                 for k in range(i, 1, -1):
                     for j in range(board.width):
                         board.Field[k][j] = board.Field[k - 1][j]
+        self.score+=self.default_score_computation(lines)
 
-        self.score += lines ** 2  # code smell - what if I want to use other stragies for score computation?
+
 
     def freeze(self, image, board):
         for i in range(4):
@@ -172,7 +200,7 @@ class Screen:
         self.screen.blit(label, range)
 
 
-def play_game():
+def play_game(self):
     board = Board()
     game = Game()
     color = Color()
@@ -197,6 +225,8 @@ def play_game():
             if event.type == pygame.QUIT:
                 done = True
             if event.type == pygame.KEYDOWN:
+                #makes csgo hitmarker sound on press
+                self.load_sound('hitmarker_2.mp3').play()
                 if event.key == pygame.K_UP:
                     game.rotate(board)
                 if event.key == pygame.K_LEFT:
