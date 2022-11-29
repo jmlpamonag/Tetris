@@ -2,6 +2,74 @@ import pygame
 import random
 
 
+class Visuals:
+    def __init__(self):
+        self.DarkMode = False
+
+    def set_dark_mode(self):
+        self.DarkMode = not self.DarkMode
+
+        if self.DarkMode:
+            Color.BLACK = (255, 255, 255)
+            Color.WHITE = (0, 0, 0)
+        else:
+            Color.BLACK = (0, 0, 0)
+            Color.WHITE = (255, 255, 255)
+
+    def dark_mode_button(self, screen, pos):
+        icon = "Dark Mode [ Z ]"
+        if self.DarkMode:
+            icon = "Light Mode [ Z ]"
+
+        screen.add_text(font_type='Calibri', font_size=15,
+                        text=icon, color=Color.BLACK, bool=True, range=pos)
+
+
+class Scoreboard:
+    def __init__(self):
+        self.file = open('scores.txt', 'r+')
+        self.scores = self.file.readlines()
+        self.wrote = False
+        print(self.scores)
+        self.file.close()
+
+    def add_score(self, score):
+        if not self.wrote:
+            if len(self.scores) >= 10:
+                lowest = 999999
+                for i in self.scores:
+                    i.replace("\n", "")
+                    if int(i) < lowest:
+                        lowest = int(i)
+
+                if (score > lowest):
+                    self.file = open('scores.txt', 'w+')
+                    index = self.scores.index(str(lowest) + "\n")
+                    self.scores[index] = str(score) + "\n"
+                    self.file.writelines(self.scores)
+                    self.wrote = True
+                    self.file.close()
+            else:
+                self.file = open('scores.txt', 'w+')
+                self.scores.append("\n" + str(score))
+                print(self.scores)
+                self.file.writelines(self.scores)
+                self.wrote = True
+                self.file.close()
+
+    def draw_scoreboard(self, screen):
+        screen.add_text(font_type='Calibri', font_size=45, text="Game Over", bool=True, color=(255, 125, 0),
+                        range=[100, 50])
+        screen.add_text(font_type='Calibri', font_size=35, text="Enter q to Quit", bool=True, color=(255, 215, 0),
+                        range=[100, 85])
+
+        i = 1
+        for score in self.scores:
+            screen.add_text(font_type='Calibri', font_size=25, text=str(i) + ": " + score.replace("\n", ""), bool=True, color=Color.BLACK,
+                            range=[100, 95 + (i * 30)])
+            i += 1
+
+
 class Game:
     def __init__(self, ):
         self.state = "start"
@@ -21,6 +89,7 @@ class Game:
         ]
         self.typet = 0
         self.color = 0
+        self.held = None
 
     def make_figure(self):
         self.ShiftX = 3
@@ -96,7 +165,8 @@ class Game:
                     for j in range(board.width):
                         board.Field[k][j] = board.Field[k - 1][j]
 
-        self.score += lines ** 2  # code smell - what if I want to use other stragies for score computation?
+        # code smell - what if I want to use other stragies for score computation?
+        self.score += lines ** 2
 
     def freeze(self, image, board):
         for i in range(4):
@@ -107,6 +177,28 @@ class Game:
         self.make_figure()
         if self.intersects(image, board):
             self.state = "gameover"
+
+    def draw_held_figure(self, screen, x=320, y=20, colors=()):
+        if self.held:
+            for i in range(4):
+                for j in range(4):
+                    p = i * 4 + j
+                    image = self.Figures[self.held - 1][0]
+                    if p in image:
+                        pygame.draw.rect(screen.screen, colors[self.color],
+                                         [x + self.Tzoom * (j) + 1,
+                                          y + self.Tzoom *
+                                          (i) + 1,
+                                          self.Tzoom - 2, self.Tzoom - 2])
+
+    def hold_piece(self):
+        if not self.held:
+            print(self.typet)
+            self.held = self.typet + 1
+        else:
+            piece = self.held - 1
+            self.held = self.typet + 1
+            self.typet = piece
 
 
 class Color:
@@ -141,7 +233,8 @@ class Board:
         screen.fill_background(Color.WHITE)
         for i in range(self.height):
             for j in range(self.width):
-                pygame.draw.rect(screen.screen, Color.GRAY, [x + zoom * j, y + zoom * i, zoom, zoom], 1)
+                pygame.draw.rect(screen.screen, Color.GRAY, [
+                                 x + zoom * j, y + zoom * i, zoom, zoom], 1)
                 if self.Field[i][j] > 0:
                     pygame.draw.rect(screen.screen, Color.colors[self.Field[i][j]],
                                      [x + zoom * j + 1, y + zoom * i + 1, zoom - 2, zoom - 1])
@@ -177,6 +270,8 @@ def play_game():
     game = Game()
     color = Color()
     screen = Screen()
+    visuals = Visuals()
+    scoreboard = Scoreboard()
     colors_list = color.colors
     counter = 0
     pressing_down = False
@@ -210,6 +305,10 @@ def play_game():
                         done = True
                 if event.key == pygame.K_DOWN:
                     pressing_down = True
+                if event.key == pygame.K_z:
+                    visuals.set_dark_mode()
+                if event.key == pygame.K_e:
+                    game.hold_piece()
 
             if event.type == pygame.KEYUP and event.key == pygame.K_DOWN:
                 pressing_down = False
@@ -218,13 +317,20 @@ def play_game():
 
         game.draw_figure(screen=screen, colors=colors_list)
         text = f"Score: {game.score}"
-        screen.add_text(font_type='Calibri', font_size=25, text=text, color=Color.BLACK, bool=True, range=[0, 0])
+        screen.add_text(font_type='Calibri', font_size=25,
+                        text=text, color=Color.BLACK, bool=True, range=[0, 0])
 
         if game.state == "gameover":
-            screen.add_text(font_type='Calibri', font_size=65, text="Game Over", bool=True, color=(255, 125, 0),
-                            range=[20, 200])
-            screen.add_text(font_type='Calibri', font_size=65, text="Enter q to Quit", bool=True, color=(255, 215, 0),
-                            range=[25, 265])
+            scoreboard.draw_scoreboard(screen)
+            scoreboard.add_score(game.score)
+
+        # Dark Mode Button
+        visuals.dark_mode_button(screen, [300, 480])
+
+        # Hold Piece Visual
+        screen.add_text(font_type='Calibri', font_size=15, text="Hold Piece [ E ]", bool=True, color=Color.BLACK,
+                        range=[305, 5])
+        game.draw_held_figure(screen=screen, colors=colors_list)
 
         # refresh the screen
         screen.update_screen()
@@ -239,3 +345,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
