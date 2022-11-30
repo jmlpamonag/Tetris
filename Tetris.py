@@ -98,6 +98,74 @@ class Scoreboard:
             i += 1
 
 
+class Visuals:
+    def __init__(self):
+        self.DarkMode = False
+
+    def set_dark_mode(self):
+        self.DarkMode = not self.DarkMode
+
+        if self.DarkMode:
+            Color.BLACK = (255, 255, 255)
+            Color.WHITE = (0, 0, 0)
+        else:
+            Color.BLACK = (0, 0, 0)
+            Color.WHITE = (255, 255, 255)
+
+    def dark_mode_button(self, screen, pos):
+        icon = "Dark Mode [ Z ]"
+        if self.DarkMode:
+            icon = "Light Mode [ Z ]"
+
+        screen.add_text(font_type='Calibri', font_size=15,
+                        text=icon, color=Color.BLACK, bool=True, range=pos)
+
+
+class Scoreboard:
+    def __init__(self):
+        self.file = open('scores.txt', 'r+')
+        self.scores = self.file.readlines()
+        self.wrote = False
+        print(self.scores)
+        self.file.close()
+
+    def add_score(self, score):
+        if not self.wrote:
+            if len(self.scores) >= 10:
+                lowest = 999999
+                for i in self.scores:
+                    i.replace("\n", "")
+                    if int(i) < lowest:
+                        lowest = int(i)
+
+                if (score > lowest):
+                    self.file = open('scores.txt', 'w+')
+                    index = self.scores.index(str(lowest) + "\n")
+                    self.scores[index] = str(score) + "\n"
+                    self.file.writelines(self.scores)
+                    self.wrote = True
+                    self.file.close()
+            else:
+                self.file = open('scores.txt', 'w+')
+                self.scores.append("\n" + str(score))
+                print(self.scores)
+                self.file.writelines(self.scores)
+                self.wrote = True
+                self.file.close()
+
+    def draw_scoreboard(self, screen):
+        screen.add_text(font_type='Calibri', font_size=45, text="Game Over", bool=True, color=(255, 125, 0),
+                        range=[100, 50])
+        screen.add_text(font_type='Calibri', font_size=35, text="Enter q to Quit", bool=True, color=(255, 215, 0),
+                        range=[100, 85])
+
+        i = 1
+        for score in self.scores:
+            screen.add_text(font_type='Calibri', font_size=25, text=str(i) + ": " + score.replace("\n", ""), bool=True, color=Color.BLACK,
+                            range=[100, 95 + (i * 30)])
+            i += 1
+
+
 class Game:
     def __init__(self, ):
         self.state = "start"
@@ -311,6 +379,7 @@ def play_game():
     scoreboard = Scoreboard()
     sound = Sound(0.1)
 
+
     colors_list = color.colors
     counter = 0
     pressing_down = False
@@ -373,6 +442,7 @@ def play_game():
                     game_over_sound =True  
            
 
+
         # Dark Mode Button
         visuals.dark_mode_button(screen, [300, 480])
 
@@ -394,4 +464,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
+
