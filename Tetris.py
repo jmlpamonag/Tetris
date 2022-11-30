@@ -1,15 +1,107 @@
 import pygame
-import os
 import random
+import os
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 
+class Sound:
+    def __init__(self,volume):
+        self.volume = volume
+    def load_sound(self,file):
+        """ because pygame can be be compiled without mixer."""
+        if not pygame.mixer:
+            return None
+        file = os.path.join(main_dir, "data", file)
+        try:
+            sound = pygame.mixer.Sound(file)
+            sound.set_volume(self.volume)
+            return sound
+        except pygame.error:
+            print("Warning, unable to load, %s" % file)
+        return None
+    def hitmarker(self):
+        self.load_sound('hitmarker_2.mp3').play()
+    def highscore(self):
+        self.load_sound('ode_to_joy_snip.mp3').play()
+    def not_highscore(self):
+        self.load_sound('spongebob-boowomp.mp3').play()
+        
+
+
+class Visuals:
+    def __init__(self):
+        self.DarkMode = False
+
+    def set_dark_mode(self):
+        self.DarkMode = not self.DarkMode
+
+        if self.DarkMode:
+            Color.BLACK = (255, 255, 255)
+            Color.WHITE = (0, 0, 0)
+        else:
+            Color.BLACK = (0, 0, 0)
+            Color.WHITE = (255, 255, 255)
+
+    def dark_mode_button(self, screen, pos):
+        icon = "Dark Mode [ Z ]"
+        if self.DarkMode:
+            icon = "Light Mode [ Z ]"
+
+        screen.add_text(font_type='Calibri', font_size=15,
+                        text=icon, color=Color.BLACK, bool=True, range=pos)
+
+
+class Scoreboard:
+    def __init__(self):
+        self.file = open('scores.txt', 'r+')
+        self.scores = self.file.readlines()
+        self.wrote = False
+        print(self.scores)
+        self.file.close()
+
+    def add_score(self, score):
+        if not self.wrote:
+            if len(self.scores) >= 10:
+                lowest = 999999
+                for i in self.scores:
+                    i.replace("\n", "")
+                    if int(i) < lowest:
+                        lowest = int(i)
+
+                if (score > lowest):
+                    self.file = open('scores.txt', 'w+')
+                    index = self.scores.index(str(lowest) + "\n")
+                    self.scores[index] = str(score) + "\n"
+                    self.file.writelines(self.scores)
+                    self.wrote = True
+                    self.file.close()
+                    return True
+            else:
+                self.file = open('scores.txt', 'w+')
+                self.scores.append("\n" + str(score))
+                print(self.scores)
+                self.file.writelines(self.scores)
+                self.wrote = True
+                self.file.close()
+                return False
+
+
+    def draw_scoreboard(self, screen):
+        screen.add_text(font_type='Calibri', font_size=45, text="Game Over", bool=True, color=(255, 125, 0),
+                        range=[100, 50])
+        screen.add_text(font_type='Calibri', font_size=35, text="Enter q to Quit", bool=True, color=(255, 215, 0),
+                        range=[100, 85])
+
+        i = 1
+        for score in self.scores:
+            screen.add_text(font_type='Calibri', font_size=25, text=str(i) + ": " + score.replace("\n", ""), bool=True, color=Color.BLACK,
+                            range=[100, 95 + (i * 30)])
+            i += 1
 
 
 class Game:
     def __init__(self, ):
         self.state = "start"
         self.score = 0
-        self.combo = -1 #initialize combo meter -Hai Hoang
         self.rotation = 0
         self.ShiftX = 0
         self.ShiftY = 0
@@ -25,6 +117,7 @@ class Game:
         ]
         self.typet = 0
         self.color = 0
+        self.held = None
 
     def make_figure(self):
         self.ShiftX = 3
@@ -32,8 +125,6 @@ class Game:
         self.rotation = 0
         self.typet = random.randint(0, len(self.Figures) - 1)
         self.color = random.randint(1, len(Color.colors) - 1)
-
-
 
     def draw_figure(self, screen, x=100, y=60, colors=()):
         for i in range(4):
@@ -45,7 +136,6 @@ class Game:
                                      [x + self.Tzoom * (j + self.ShiftX) + 1,
                                       y + self.Tzoom * (i + self.ShiftY) + 1,
                                       self.Tzoom - 2, self.Tzoom - 2])
-    
 
     def go_space(self, board):
         while not self.intersects(self.Figures[self.typet][self.rotation], board):
@@ -89,7 +179,6 @@ class Game:
                         intersection = True
         return intersection
 
-
     def default_score_computation(self, lines):
         return lines ** 2
     def combo_score_computation(self, lines):
@@ -99,7 +188,6 @@ class Game:
             self.combo +=lines
         return lines*(3+self.combo)
 
-    #def combo_calculation(self)
     def break_lines(self, board):
         lines = 0
         for i in range(1, board.height):
@@ -113,9 +201,9 @@ class Game:
                 for k in range(i, 1, -1):
                     for j in range(board.width):
                         board.Field[k][j] = board.Field[k - 1][j]
+
+        # code smell - what if I want to use other stragies for score computation?
         self.score+= self.combo_score_computation(lines)
-
-
 
     def freeze(self, image, board):
         for i in range(4):
@@ -127,23 +215,27 @@ class Game:
         if self.intersects(image, board):
             self.state = "gameover"
 
-class Sound:
-    def load_sound(self,file):
-        """ because pygame can be be compiled without mixer."""
-        if not pygame.mixer:
-            return None
-        file = os.path.join(main_dir, "data", file)
-        try:
-            sound = pygame.mixer.Sound(file)
-            return sound
-        except pygame.error:
-            print("Warning, unable to load, %s" % file)
-        return None
-    def hitmarker(self):
-        self.load_sound('hitmarker_2.mp3').play()
-    def highscore(self):
-        self.load_sound('ode_to_joy_snip.mp3').play()
-        
+    def draw_held_figure(self, screen, x=320, y=20, colors=()):
+        if self.held:
+            for i in range(4):
+                for j in range(4):
+                    p = i * 4 + j
+                    image = self.Figures[self.held - 1][0]
+                    if p in image:
+                        pygame.draw.rect(screen.screen, colors[self.color],
+                                         [x + self.Tzoom * (j) + 1,
+                                          y + self.Tzoom *
+                                          (i) + 1,
+                                          self.Tzoom - 2, self.Tzoom - 2])
+
+    def hold_piece(self):
+        if not self.held:
+            print(self.typet)
+            self.held = self.typet + 1
+        else:
+            piece = self.held - 1
+            self.held = self.typet + 1
+            self.typet = piece
 
 
 class Color:
@@ -178,7 +270,8 @@ class Board:
         screen.fill_background(Color.WHITE)
         for i in range(self.height):
             for j in range(self.width):
-                pygame.draw.rect(screen.screen, Color.GRAY, [x + zoom * j, y + zoom * i, zoom, zoom], 1)
+                pygame.draw.rect(screen.screen, Color.GRAY, [
+                                 x + zoom * j, y + zoom * i, zoom, zoom], 1)
                 if self.Field[i][j] > 0:
                     pygame.draw.rect(screen.screen, Color.colors[self.Field[i][j]],
                                      [x + zoom * j + 1, y + zoom * i + 1, zoom - 2, zoom - 1])
@@ -214,11 +307,14 @@ def play_game():
     game = Game()
     color = Color()
     screen = Screen()
-    sound = Sound()
+    visuals = Visuals()
+    scoreboard = Scoreboard()
+    sound = Sound(0.1)
+
     colors_list = color.colors
     counter = 0
     pressing_down = False
-
+    game_over_sound = False
     game.make_figure()
     done = False
     while not done:
@@ -236,7 +332,7 @@ def play_game():
                 done = True
             if event.type == pygame.KEYDOWN:
                 #makes csgo hitmarker sound on press
-                sound.highscore()
+                sound.hitmarker()
                 if event.key == pygame.K_UP:
                     game.rotate(board)
                 if event.key == pygame.K_LEFT:
@@ -250,6 +346,10 @@ def play_game():
                         done = True
                 if event.key == pygame.K_DOWN:
                     pressing_down = True
+                if event.key == pygame.K_z:
+                    visuals.set_dark_mode()
+                if event.key == pygame.K_e:
+                    game.hold_piece()
 
             if event.type == pygame.KEYUP and event.key == pygame.K_DOWN:
                 pressing_down = False
@@ -258,14 +358,28 @@ def play_game():
 
         game.draw_figure(screen=screen, colors=colors_list)
         text = f"Score: {game.score}"
-        screen.add_text(font_type='Calibri', font_size=25, text=text, color=Color.BLACK, bool=True, range=[0, 0])
+        screen.add_text(font_type='Calibri', font_size=25,
+                        text=text, color=Color.BLACK, bool=True, range=[0, 0])
 
         if game.state == "gameover":
-            #to add game sounds here... once someone implements highscore
-            screen.add_text(font_type='Calibri', font_size=65, text="Game Over", bool=True, color=(255, 125, 0),
-                            range=[20, 200])
-            screen.add_text(font_type='Calibri', font_size=65, text="Enter q to Quit", bool=True, color=(255, 215, 0),
-                            range=[25, 265])
+            scoreboard.draw_scoreboard(screen)
+            if scoreboard.add_score(game.score):
+                if(not game_over_sound):
+                    sound.highscore() 
+                    game_over_sound =True  
+            else: 
+                if(not game_over_sound):
+                    sound.not_highscore() 
+                    game_over_sound =True  
+           
+
+        # Dark Mode Button
+        visuals.dark_mode_button(screen, [300, 480])
+
+        # Hold Piece Visual
+        screen.add_text(font_type='Calibri', font_size=15, text="Hold Piece [ E ]", bool=True, color=Color.BLACK,
+                        range=[305, 5])
+        game.draw_held_figure(screen=screen, colors=colors_list)
 
         # refresh the screen
         screen.update_screen()
@@ -280,3 +394,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
