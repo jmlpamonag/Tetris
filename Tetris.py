@@ -1,5 +1,101 @@
 import pygame
 import random
+import os
+main_dir = os.path.split(os.path.abspath(__file__))[0]
+
+class Sound:
+    def __init__(self,volume):
+        self.volume = volume
+    def load_sound(self,file):
+        """ because pygame can be be compiled without mixer."""
+        if not pygame.mixer:
+            return None
+        file = os.path.join(main_dir, "data", file)
+        try:
+            sound = pygame.mixer.Sound(file)
+            sound.set_volume(self.volume)
+            return sound
+        except pygame.error:
+            print("Warning, unable to load, %s" % file)
+        return None
+    def hitmarker(self):
+        self.load_sound('hitmarker_2.mp3').play()
+    def highscore(self):
+        self.load_sound('ode_to_joy_snip.mp3').play()
+    def not_highscore(self):
+        self.load_sound('spongebob-boowomp.mp3').play()
+        
+
+
+class Visuals:
+    def __init__(self):
+        self.DarkMode = False
+
+    def set_dark_mode(self):
+        self.DarkMode = not self.DarkMode
+
+        if self.DarkMode:
+            Color.BLACK = (255, 255, 255)
+            Color.WHITE = (0, 0, 0)
+        else:
+            Color.BLACK = (0, 0, 0)
+            Color.WHITE = (255, 255, 255)
+
+    def dark_mode_button(self, screen, pos):
+        icon = "Dark Mode [ Z ]"
+        if self.DarkMode:
+            icon = "Light Mode [ Z ]"
+
+        screen.add_text(font_type='Calibri', font_size=15,
+                        text=icon, color=Color.BLACK, bool=True, range=pos)
+
+
+class Scoreboard:
+    def __init__(self):
+        self.file = open('scores.txt', 'r+')
+        self.scores = self.file.readlines()
+        self.wrote = False
+        print(self.scores)
+        self.file.close()
+
+    def add_score(self, score):
+        if not self.wrote:
+            if len(self.scores) >= 10:
+                lowest = 999999
+                for i in self.scores:
+                    i.replace("\n", "")
+                    if int(i) < lowest:
+                        lowest = int(i)
+
+                if (score > lowest):
+                    self.file = open('scores.txt', 'w+')
+                    index = self.scores.index(str(lowest) + "\n")
+                    self.scores[index] = str(score) + "\n"
+                    self.file.writelines(self.scores)
+                    self.wrote = True
+                    self.file.close()
+                    return True
+            else:
+                self.file = open('scores.txt', 'w+')
+                self.scores.append("\n" + str(score))
+                print(self.scores)
+                self.file.writelines(self.scores)
+                self.wrote = True
+                self.file.close()
+                return False
+
+
+    def draw_scoreboard(self, screen):
+        screen.add_text(font_type='Calibri', font_size=45, text="Game Over", bool=True, color=(255, 125, 0),
+                        range=[100, 50])
+        screen.add_text(font_type='Calibri', font_size=35, text="Enter q to Quit", bool=True, color=(255, 215, 0),
+                        range=[100, 85])
+
+        i = 1
+        for score in self.scores:
+            screen.add_text(font_type='Calibri', font_size=25, text=str(i) + ": " + score.replace("\n", ""), bool=True, color=Color.BLACK,
+                            range=[100, 95 + (i * 30)])
+            i += 1
 
 
 class Visuals:
@@ -151,6 +247,15 @@ class Game:
                         intersection = True
         return intersection
 
+    def default_score_computation(self, lines):
+        return lines ** 2
+    def combo_score_computation(self, lines):
+        if(lines==0):
+            self.combo = -1;#combo has broken, reset combo meter
+        else:
+            self.combo +=lines
+        return lines*(3+self.combo)
+
     def break_lines(self, board):
         lines = 0
         for i in range(1, board.height):
@@ -166,7 +271,7 @@ class Game:
                         board.Field[k][j] = board.Field[k - 1][j]
 
         # code smell - what if I want to use other stragies for score computation?
-        self.score += lines ** 2
+        self.score+= self.combo_score_computation(lines)
 
     def freeze(self, image, board):
         for i in range(4):
@@ -272,10 +377,13 @@ def play_game():
     screen = Screen()
     visuals = Visuals()
     scoreboard = Scoreboard()
+    sound = Sound(0.1)
+
+
     colors_list = color.colors
     counter = 0
     pressing_down = False
-
+    game_over_sound = False
     game.make_figure()
     done = False
     while not done:
@@ -292,6 +400,8 @@ def play_game():
             if event.type == pygame.QUIT:
                 done = True
             if event.type == pygame.KEYDOWN:
+                #makes csgo hitmarker sound on press
+                sound.hitmarker()
                 if event.key == pygame.K_UP:
                     game.rotate(board)
                 if event.key == pygame.K_LEFT:
@@ -322,7 +432,16 @@ def play_game():
 
         if game.state == "gameover":
             scoreboard.draw_scoreboard(screen)
-            scoreboard.add_score(game.score)
+            if scoreboard.add_score(game.score):
+                if(not game_over_sound):
+                    sound.highscore() 
+                    game_over_sound =True  
+            else: 
+                if(not game_over_sound):
+                    sound.not_highscore() 
+                    game_over_sound =True  
+           
+
 
         # Dark Mode Button
         visuals.dark_mode_button(screen, [300, 480])
@@ -345,4 +464,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
+
