@@ -434,15 +434,13 @@ def play_game():
 
         if game.state == "gameover":
             scoreboard.draw_scoreboard(screen)
-            if scoreboard.add_score(game.score):
-                if(not game_over_sound):
-                    sound.highscore() 
-                    game_over_sound =True  
-            else: 
-                if(not game_over_sound):
-                    sound.not_highscore() 
-                    game_over_sound =True  
-           
+            isHighScore = scoreboard.add_score(game.score)
+            if not game_over_sound:
+               if isHighScore:
+                 sound.highscore()
+               else:
+                 sound.not_highscore()
+               game_over_sound = True
 
 
         # Dark Mode Button
