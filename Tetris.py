@@ -75,6 +75,8 @@ class Scoreboard:
                     self.wrote = True
                     self.file.close()
                     return True
+                else:
+                    return False
             else:
                 self.file = open('scores.txt', 'w+')
                 self.scores.append("\n" + str(score))
@@ -82,7 +84,7 @@ class Scoreboard:
                 self.file.writelines(self.scores)
                 self.wrote = True
                 self.file.close()
-                return False
+                return True
 
 
     def draw_scoreboard(self, screen):
