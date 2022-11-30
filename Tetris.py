@@ -33,17 +33,7 @@ class Game:
         self.typet = random.randint(0, len(self.Figures) - 1)
         self.color = random.randint(1, len(Color.colors) - 1)
 
-    def load_sound(file):
-        """ because pygame can be be compiled without mixer."""
-        if not pygame.mixer:
-            return None
-        file = os.path.join(main_dir, "data", file)
-        try:
-            sound = pygame.mixer.Sound(file)
-            return sound
-        except pygame.error:
-            print("Warning, unable to load, %s" % file)
-        return None
+
 
     def draw_figure(self, screen, x=100, y=60, colors=()):
         for i in range(4):
@@ -55,6 +45,7 @@ class Game:
                                      [x + self.Tzoom * (j + self.ShiftX) + 1,
                                       y + self.Tzoom * (i + self.ShiftY) + 1,
                                       self.Tzoom - 2, self.Tzoom - 2])
+    
 
     def go_space(self, board):
         while not self.intersects(self.Figures[self.typet][self.rotation], board):
@@ -105,8 +96,8 @@ class Game:
         if(lines==0):
             self.combo = -1;#combo has broken, reset combo meter
         else:
-            self.combo+= lines
-            return lines**(3+self.combo)
+            self.combo +=lines
+        return lines*(3+self.combo)
 
     #def combo_calculation(self)
     def break_lines(self, board):
@@ -122,7 +113,7 @@ class Game:
                 for k in range(i, 1, -1):
                     for j in range(board.width):
                         board.Field[k][j] = board.Field[k - 1][j]
-        self.score+=self.default_score_computation(lines)
+        self.score+= self.combo_score_computation(lines)
 
 
 
@@ -135,6 +126,24 @@ class Game:
         self.make_figure()
         if self.intersects(image, board):
             self.state = "gameover"
+
+class Sound:
+    def load_sound(self,file):
+        """ because pygame can be be compiled without mixer."""
+        if not pygame.mixer:
+            return None
+        file = os.path.join(main_dir, "data", file)
+        try:
+            sound = pygame.mixer.Sound(file)
+            return sound
+        except pygame.error:
+            print("Warning, unable to load, %s" % file)
+        return None
+    def hitmarker(self):
+        self.load_sound('hitmarker_2.mp3').play()
+    def highscore(self):
+        self.load_sound('ode_to_joy_snip.mp3').play()
+        
 
 
 class Color:
@@ -200,11 +209,12 @@ class Screen:
         self.screen.blit(label, range)
 
 
-def play_game(self):
+def play_game():
     board = Board()
     game = Game()
     color = Color()
     screen = Screen()
+    sound = Sound()
     colors_list = color.colors
     counter = 0
     pressing_down = False
@@ -226,7 +236,7 @@ def play_game(self):
                 done = True
             if event.type == pygame.KEYDOWN:
                 #makes csgo hitmarker sound on press
-                self.load_sound('hitmarker_2.mp3').play()
+                sound.highscore()
                 if event.key == pygame.K_UP:
                     game.rotate(board)
                 if event.key == pygame.K_LEFT:
@@ -251,6 +261,7 @@ def play_game(self):
         screen.add_text(font_type='Calibri', font_size=25, text=text, color=Color.BLACK, bool=True, range=[0, 0])
 
         if game.state == "gameover":
+            #to add game sounds here... once someone implements highscore
             screen.add_text(font_type='Calibri', font_size=65, text="Game Over", bool=True, color=(255, 125, 0),
                             range=[20, 200])
             screen.add_text(font_type='Calibri', font_size=65, text="Enter q to Quit", bool=True, color=(255, 215, 0),
