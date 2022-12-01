@@ -18,14 +18,27 @@ class Sound:
         except pygame.error:
             print("Warning, unable to load, %s" % file)
         return None
+    def load_background_music(self, file):
+        if not pygame.mixer:
+            return None
+        file = os.path.join(main_dir, "data", file)
+        try:
+            music = pygame.mixer.music.load(file)
+            pygame.mixer.music.play(-1)
+            pygame.mixer.music.set_volume(0.05)
+        except pygame.error:
+            print("Warning, unable to load, %s" % file)
+        return None
     def hitmarker(self):
         self.load_sound('hitmarker_2.mp3').play()
     def highscore(self):
         self.load_sound('ode_to_joy_snip.mp3').play()
     def not_highscore(self):
         self.load_sound('spongebob-boowomp.mp3').play()
-        
+    def in_game(self):
+        self.load_background_music('game-music.mp3')
 
+        
 
 class Visuals:
     def __init__(self):
@@ -188,6 +201,8 @@ class Game:
         self.typet = 0
         self.color = 0
         self.held = None
+        self.next = None
+        self.clock = pygame.time.Clock()
 
     def make_figure(self):
         self.ShiftX = 3
@@ -298,6 +313,34 @@ class Game:
                                           (i) + 1,
                                           self.Tzoom - 2, self.Tzoom - 2])
 
+
+    def message_to_screen(self, msg, color, screen, range, font_size):
+        screen_text = pygame.font.SysFont(None, 25).render(msg, True, color)
+        screen.add_text(font_type='Calibri', font_size=font_size,
+                        text=msg, color=color, bool=True, range=range)
+
+    def pause(self, screen):
+        paused = True
+
+        while paused:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    quit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_c:
+                        paused = False
+
+                    elif event.key == pygame.K_q:
+                        pygame.quit()
+                        quit()
+            screen.fill_background(Color.WHITE)
+            self.message_to_screen("Paused", Color.BLACK, screen, [160, 200], 25)
+            self.message_to_screen("Press C to Continue and Q to Quit", Color.GRAY, screen, [55, 225], 18)
+            pygame.display.update()
+            self.clock.tick(5)
+            
+
     def hold_piece(self):
         if not self.held:
             print(self.typet)
@@ -381,7 +424,7 @@ def play_game():
     scoreboard = Scoreboard()
     sound = Sound(0.1)
 
-
+    sound.in_game()
     colors_list = color.colors
     counter = 0
     pressing_down = False
@@ -421,6 +464,11 @@ def play_game():
                     visuals.set_dark_mode()
                 if event.key == pygame.K_e:
                     game.hold_piece()
+                if event.key == pygame.K_p:
+                    game.pause(screen=screen)
+                if event.key == pygame.K_c:
+                    play_game()
+                    
 
             if event.type == pygame.KEYUP and event.key == pygame.K_DOWN:
                 pressing_down = False
@@ -450,6 +498,9 @@ def play_game():
         screen.add_text(font_type='Calibri', font_size=15, text="Hold Piece [ E ]", bool=True, color=Color.BLACK,
                         range=[305, 5])
         game.draw_held_figure(screen=screen, colors=colors_list)
+
+        # Next Piece Visual
+        # TO DO
 
         # refresh the screen
         screen.update_screen()
