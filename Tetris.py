@@ -180,7 +180,6 @@ class Scoreboard:
                             range=[100, 95 + (i * 30)])
             i += 1
 
-
 class Game:
     def __init__(self, ):
         self.state = "start"
@@ -202,14 +201,17 @@ class Game:
         self.color = 0
         self.held = None
         self.next = None
+        self.next_color = None
         self.clock = pygame.time.Clock()
 
     def make_figure(self):
         self.ShiftX = 3
         self.ShiftY = 0
         self.rotation = 0
-        self.typet = random.randint(0, len(self.Figures) - 1)
-        self.color = random.randint(1, len(Color.colors) - 1)
+        self.typet = self.next or random.randint(0, len(self.Figures) - 1)
+        self.color = self.next_color or random.randint(1, len(Color.colors) - 1)
+        self.next = random.randint(0, len(self.Figures) - 1)
+        self.next_color = random.randint(1, len(Color.colors) - 1)
 
     def draw_figure(self, screen, x=100, y=60, colors=()):
         for i in range(4):
@@ -221,7 +223,6 @@ class Game:
                                      [x + self.Tzoom * (j + self.ShiftX) + 1,
                                       y + self.Tzoom * (i + self.ShiftY) + 1,
                                       self.Tzoom - 2, self.Tzoom - 2])
-
     def go_space(self, board):
         while not self.intersects(self.Figures[self.typet][self.rotation], board):
             self.ShiftY += 1
@@ -313,12 +314,18 @@ class Game:
                                           (i) + 1,
                                           self.Tzoom - 2, self.Tzoom - 2])
 
-
-    def message_to_screen(self, msg, color, screen, range, font_size):
-        screen_text = pygame.font.SysFont(None, 25).render(msg, True, color)
-        screen.add_text(font_type='Calibri', font_size=font_size,
-                        text=msg, color=color, bool=True, range=range)
-
+    def draw_next_figure(self, screen, x=320, y=150, colors=()):
+        if self.next:
+            for i in range(4):
+                for j in range(4):
+                    p = i * 4 + j
+                    image = self.Figures[self.next][0]
+                    if p in image:
+                        pygame.draw.rect(screen.screen, colors[self.next_color],
+                                         [x + self.Tzoom * (j) + 1,
+                                          y + self.Tzoom *
+                                          (i) + 1,
+                                          self.Tzoom - 2, self.Tzoom - 2])
     def pause(self, screen):
         paused = True
 
@@ -335,8 +342,8 @@ class Game:
                         pygame.quit()
                         quit()
             screen.fill_background(Color.WHITE)
-            self.message_to_screen("Paused", Color.BLACK, screen, [160, 200], 25)
-            self.message_to_screen("Press C to Continue and Q to Quit", Color.GRAY, screen, [55, 225], 18)
+            screen.message_to_screen("Paused", Color.BLACK, [160, 200], 25)
+            screen.message_to_screen("Press C to Continue and Q to Quit", Color.GRAY, [55, 225], 18)
             pygame.display.update()
             self.clock.tick(5)
             
@@ -349,6 +356,8 @@ class Game:
             piece = self.held - 1
             self.held = self.typet + 1
             self.typet = piece
+
+        
 
 
 class Color:
@@ -391,7 +400,7 @@ class Board:
 
 
 class Screen:
-    def __init__(self, width=400, height=500, background_color=Color.WHITE, font_type="monospace", font_size=35,
+    def __init__(self, width=415, height=500, background_color=Color.WHITE, font_type="monospace", font_size=35,
                  clock_tick=25, caption="Tetris"):
         self.width = width
         self.height = height
@@ -413,6 +422,11 @@ class Screen:
         font = pygame.font.SysFont(font_type, font_size, True, False)
         label = font.render(text, bool, color)
         self.screen.blit(label, range)
+
+    def message_to_screen(self, msg, color, range, font_size):
+        screen_text = pygame.font.SysFont(None, 25).render(msg, True, color)
+        self.add_text(font_type='Calibri', font_size=font_size,
+                        text=msg, color=color, bool=True, range=range)
 
 
 def play_game():
@@ -474,8 +488,13 @@ def play_game():
                 pressing_down = False
 
         board.draw_board(screen=screen)
-
         game.draw_figure(screen=screen, colors=colors_list)
+
+        # Next Piece Visual
+        screen.add_text(font_type='Calibri', font_size=15, text="Next Piece", bool=True, color=Color.BLACK,
+                        range=[320, 120])
+        game.draw_next_figure(screen=screen, colors=colors_list)
+
         text = f"Score: {game.score}"
         screen.add_text(font_type='Calibri', font_size=25,
                         text=text, color=Color.BLACK, bool=True, range=[0, 0])
@@ -498,9 +517,6 @@ def play_game():
         screen.add_text(font_type='Calibri', font_size=15, text="Hold Piece [ E ]", bool=True, color=Color.BLACK,
                         range=[305, 5])
         game.draw_held_figure(screen=screen, colors=colors_list)
-
-        # Next Piece Visual
-        # TO DO
 
         # refresh the screen
         screen.update_screen()
