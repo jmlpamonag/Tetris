@@ -18,14 +18,27 @@ class Sound:
         except pygame.error:
             print("Warning, unable to load, %s" % file)
         return None
+    def load_background_music(self, file):
+        if not pygame.mixer:
+            return None
+        file = os.path.join(main_dir, "data", file)
+        try:
+            music = pygame.mixer.music.load(file)
+            pygame.mixer.music.play(-1)
+            pygame.mixer.music.set_volume(0.05)
+        except pygame.error:
+            print("Warning, unable to load, %s" % file)
+        return None
     def hitmarker(self):
         self.load_sound('hitmarker_2.mp3').play()
     def highscore(self):
         self.load_sound('ode_to_joy_snip.mp3').play()
     def not_highscore(self):
         self.load_sound('spongebob-boowomp.mp3').play()
-        
+    def in_game(self):
+        self.load_background_music('game-music.mp3')
 
+        
 
 class Visuals:
     def __init__(self):
@@ -167,7 +180,6 @@ class Scoreboard:
                             range=[100, 95 + (i * 30)])
             i += 1
 
-
 class Game:
     def __init__(self, ):
         self.state = "start"
@@ -188,13 +200,18 @@ class Game:
         self.typet = 0
         self.color = 0
         self.held = None
+        self.next = None
+        self.next_color = None
+        self.clock = pygame.time.Clock()
 
     def make_figure(self):
         self.ShiftX = 3
         self.ShiftY = 0
         self.rotation = 0
-        self.typet = random.randint(0, len(self.Figures) - 1)
-        self.color = random.randint(1, len(Color.colors) - 1)
+        self.typet = self.next or random.randint(0, len(self.Figures) - 1)
+        self.color = self.next_color or random.randint(1, len(Color.colors) - 1)
+        self.next = random.randint(0, len(self.Figures) - 1)
+        self.next_color = random.randint(1, len(Color.colors) - 1)
 
     def draw_figure(self, screen, x=100, y=60, colors=()):
         for i in range(4):
@@ -206,7 +223,6 @@ class Game:
                                      [x + self.Tzoom * (j + self.ShiftX) + 1,
                                       y + self.Tzoom * (i + self.ShiftY) + 1,
                                       self.Tzoom - 2, self.Tzoom - 2])
-
     def go_space(self, board):
         while not self.intersects(self.Figures[self.typet][self.rotation], board):
             self.ShiftY += 1
@@ -298,6 +314,40 @@ class Game:
                                           (i) + 1,
                                           self.Tzoom - 2, self.Tzoom - 2])
 
+    def draw_next_figure(self, screen, x=320, y=150, colors=()):
+        if self.next:
+            for i in range(4):
+                for j in range(4):
+                    p = i * 4 + j
+                    image = self.Figures[self.next][0]
+                    if p in image:
+                        pygame.draw.rect(screen.screen, colors[self.next_color],
+                                         [x + self.Tzoom * (j) + 1,
+                                          y + self.Tzoom *
+                                          (i) + 1,
+                                          self.Tzoom - 2, self.Tzoom - 2])
+    def pause(self, screen):
+        paused = True
+
+        while paused:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    quit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_c:
+                        paused = False
+
+                    elif event.key == pygame.K_q:
+                        pygame.quit()
+                        quit()
+            screen.fill_background(Color.WHITE)
+            screen.message_to_screen("Paused", Color.BLACK, [160, 200], 25)
+            screen.message_to_screen("Press C to Continue and Q to Quit", Color.GRAY, [55, 225], 18)
+            pygame.display.update()
+            self.clock.tick(5)
+            
+
     def hold_piece(self):
         if not self.held:
             print(self.typet)
@@ -306,6 +356,8 @@ class Game:
             piece = self.held - 1
             self.held = self.typet + 1
             self.typet = piece
+
+        
 
 
 class Color:
@@ -348,7 +400,7 @@ class Board:
 
 
 class Screen:
-    def __init__(self, width=400, height=500, background_color=Color.WHITE, font_type="monospace", font_size=35,
+    def __init__(self, width=415, height=500, background_color=Color.WHITE, font_type="monospace", font_size=35,
                  clock_tick=25, caption="Tetris"):
         self.width = width
         self.height = height
@@ -371,6 +423,11 @@ class Screen:
         label = font.render(text, bool, color)
         self.screen.blit(label, range)
 
+    def message_to_screen(self, msg, color, range, font_size):
+        screen_text = pygame.font.SysFont(None, 25).render(msg, True, color)
+        self.add_text(font_type='Calibri', font_size=font_size,
+                        text=msg, color=color, bool=True, range=range)
+
 
 def play_game():
     board = Board()
@@ -381,7 +438,7 @@ def play_game():
     scoreboard = Scoreboard()
     sound = Sound(0.1)
 
-
+    sound.in_game()
     colors_list = color.colors
     counter = 0
     pressing_down = False
@@ -421,13 +478,23 @@ def play_game():
                     visuals.set_dark_mode()
                 if event.key == pygame.K_e:
                     game.hold_piece()
+                if event.key == pygame.K_p:
+                    game.pause(screen=screen)
+                if event.key == pygame.K_c:
+                    play_game()
+                    
 
             if event.type == pygame.KEYUP and event.key == pygame.K_DOWN:
                 pressing_down = False
 
         board.draw_board(screen=screen)
-
         game.draw_figure(screen=screen, colors=colors_list)
+
+        # Next Piece Visual
+        screen.add_text(font_type='Calibri', font_size=15, text="Next Piece", bool=True, color=Color.BLACK,
+                        range=[320, 120])
+        game.draw_next_figure(screen=screen, colors=colors_list)
+
         text = f"Score: {game.score}"
         screen.add_text(font_type='Calibri', font_size=25,
                         text=text, color=Color.BLACK, bool=True, range=[0, 0])
