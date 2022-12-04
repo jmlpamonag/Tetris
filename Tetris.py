@@ -1,3 +1,7 @@
+# Owners: Jyhdel Pamonag, Hunter Giordullo, Hai Hoang
+# Revision Date: December 03, 2022
+# Lines of Code: Jyhdel (63 lines), Hunter (103 lines), Hai (36 lines)
+
 import pygame
 import random
 import os
@@ -346,6 +350,8 @@ class Game:
             screen.message_to_screen("Press C to Continue and Q to Quit", Color.GRAY, [55, 225], 18)
             pygame.display.update()
             self.clock.tick(5)
+        
+        return paused
             
 
     def hold_piece(self):
