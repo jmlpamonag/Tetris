@@ -265,8 +265,6 @@ class Game:
                         intersection = True
         return intersection
 
-    def default_score_computation(self, lines):
-        return lines ** 2
     def combo_score_computation(self, lines):
         if(lines==0):
             self.combo = -1;#combo has broken, reset combo meter
