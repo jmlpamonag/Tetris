@@ -1,6 +1,5 @@
 # Owner: Jyhdel Mae L. Pamonag
 # Revision Date: December 03, 2022
-# Leader comments: test should be made for the next piece feature as well
 
 import unittest
 import Tetris
@@ -13,6 +12,11 @@ class TestJyhdel(unittest.TestCase):
         self.assertEqual(game.pause,True)
         self.assertEqual(game.pause,False)
         self.assertEqual(game.pause,True)
+
+    def test_next_piece(self):
+        game = Tetris.Game()
+        game.draw_next_figure() 
+        game.draw_next_figure() 
 
     def test_background_music(self):
         sound = Tetris.Sound(1)
